@@ -5,17 +5,24 @@ const mocks = vi.hoisted(() => ({
   deleteUser: vi.fn(),
   signInWithEmailAndPassword: vi.fn(),
   signOut: vi.fn(),
+  reload: vi.fn(),
   addDoc: vi.fn(),
   collection: vi.fn(),
   getDoc: vi.fn(),
   getDocs: vi.fn(),
+  query: vi.fn(),
+  updateDoc: vi.fn(),
+  updateProfile: vi.fn(),
+  verifyBeforeUpdateEmail: vi.fn(),
+  where: vi.fn(),
+  auth: { currentUser: { uid: 'current-uid', email: 'current@example.com' } },
   deleteDoc: vi.fn(),
   setAuthentication: vi.fn(),
   clearAuthentication: vi.fn(),
 }))
 
 vi.mock('@/database/Database', () => ({
-  auth: { currentUser: { email: 'current@example.com' } },
+  auth: mocks.auth,
   default: {},
 }))
 
@@ -31,6 +38,9 @@ vi.mock('firebase/auth', () => ({
   deleteUser: mocks.deleteUser,
   signInWithEmailAndPassword: mocks.signInWithEmailAndPassword,
   signOut: mocks.signOut,
+  reload: mocks.reload,
+  updateProfile: mocks.updateProfile,
+  verifyBeforeUpdateEmail: mocks.verifyBeforeUpdateEmail,
 }))
 
 vi.mock('firebase/firestore', () => ({
@@ -40,7 +50,9 @@ vi.mock('firebase/firestore', () => ({
   doc: vi.fn(),
   getDoc: mocks.getDoc,
   getDocs: mocks.getDocs,
-  updateDoc: vi.fn(),
+  query: mocks.query,
+  updateDoc: mocks.updateDoc,
+  where: mocks.where,
 }))
 
 import UserService from '@/services/UserService'
@@ -48,6 +60,7 @@ import UserService from '@/services/UserService'
 describe('UserService', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.auth.currentUser.email = 'current@example.com'
     mocks.getDoc.mockResolvedValue({ data: () => ({ email: 'current@example.com' }) })
     mocks.deleteUser.mockResolvedValue(undefined)
     mocks.signOut.mockResolvedValue(undefined)
@@ -55,6 +68,12 @@ describe('UserService', () => {
     mocks.addDoc.mockResolvedValue(undefined)
     mocks.collection.mockReturnValue('users-collection')
     mocks.getDocs.mockResolvedValue({ docs: [] })
+    mocks.query.mockReturnValue('users-query')
+    mocks.where.mockReturnValue('email-filter')
+    mocks.updateDoc.mockResolvedValue(undefined)
+    mocks.updateProfile.mockResolvedValue(undefined)
+    mocks.verifyBeforeUpdateEmail.mockResolvedValue(undefined)
+    mocks.reload.mockResolvedValue(undefined)
   })
 
   it('stores the new user profile in Firestore without an admin field', async () => {
@@ -121,10 +140,72 @@ describe('UserService', () => {
     }])
   })
 
+  it('loads the profile belonging to the authenticated email', async () => {
+    mocks.getDocs.mockResolvedValueOnce({ docs: [] }).mockResolvedValueOnce({
+      docs: [{ id: 'current-user', data: () => ({ name: 'Current User', email: 'current@example.com' }) }],
+    })
+
+    await expect(UserService.getCurrentProfile()).resolves.toEqual({
+      id: 'current-user',
+      name: 'Current User',
+      email: 'current@example.com',
+    })
+    expect(mocks.where).toHaveBeenCalledWith('email', '==', 'current@example.com')
+  })
+
+  it('updates the authenticated name and requests email verification before changing email', async () => {
+    mocks.getDocs.mockResolvedValue({ docs: [{ id: 'current-user', data: () => ({}) }] })
+
+    await expect(UserService.updateCurrentProfile('Updated User', 'updated@example.com'))
+      .resolves.toEqual({ id: 'current-user', name: 'Updated User', email: 'current@example.com', emailVerificationPending: true })
+
+    expect(mocks.verifyBeforeUpdateEmail).toHaveBeenCalledWith(mocks.auth.currentUser, 'updated@example.com', {
+      url: 'http://localhost:3000/profile',
+    })
+    expect(mocks.updateProfile).toHaveBeenCalledWith(mocks.auth.currentUser, { displayName: 'Updated User' })
+    expect(mocks.updateDoc).toHaveBeenCalledWith(undefined, {
+      name: 'Updated User',
+      uid: 'current-uid',
+      pendingEmail: 'updated@example.com',
+    })
+  })
+
+  it('reconciles the Firestore email after Firebase verification', async () => {
+    mocks.auth.currentUser.email = 'verified@example.com'
+    mocks.getDocs.mockResolvedValue({ docs: [{ id: 'current-user', data: () => ({ name: 'Current User', email: 'current@example.com', pendingEmail: 'verified@example.com' }) }] })
+
+    await expect(UserService.getCurrentProfile()).resolves.toEqual({
+      id: 'current-user',
+      name: 'Current User',
+      email: 'verified@example.com',
+    })
+
+    expect(mocks.updateDoc).toHaveBeenCalledWith(undefined, {
+      email: 'verified@example.com',
+      uid: 'current-uid',
+      pendingEmail: null,
+    })
+  })
+
+  it('keeps the existing email while the new address is unverified', async () => {
+    mocks.getDocs.mockResolvedValue({ docs: [{
+      id: 'current-user',
+      data: () => ({ name: 'Current User', email: 'current@example.com', uid: 'current-uid', pendingEmail: 'new@example.com' }),
+    }] })
+
+    await expect(UserService.getCurrentProfile()).resolves.toEqual({
+      id: 'current-user',
+      name: 'Current User',
+      email: 'current@example.com',
+    })
+
+    expect(mocks.updateDoc).not.toHaveBeenCalled()
+  })
+
   it('deletes the authenticated Firebase user and clears the auth store', async () => {
     await expect(UserService.destroy('user-document-id')).resolves.toBe(true)
 
-    expect(mocks.deleteUser).toHaveBeenCalledWith({ email: 'current@example.com' })
+    expect(mocks.deleteUser).toHaveBeenCalledWith(mocks.auth.currentUser)
     expect(mocks.deleteDoc).toHaveBeenCalled()
     expect(mocks.signOut).toHaveBeenCalled()
     expect(mocks.clearAuthentication).toHaveBeenCalled()
