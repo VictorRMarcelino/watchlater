@@ -17,7 +17,7 @@ const logout = async () => {
         <div class="mx-auto flex w-full items-center justify-between px-5 py-5 sm:px-8">
             <RouterLink to="/" class="group flex items-center gap-3 text-slate-950 no-underline">
                 <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e85d4a] text-lg font-bold text-white shadow-sm transition-transform group-hover:-rotate-6">W</span>
-                <span class="font-serif text-xl font-bold tracking-tight">Watchlater</span>
+                <span class="font-serif text-xl font-bold tracking-tight">Watch Later</span>
             </RouterLink>
             <nav v-if="authStore.token" aria-label="Main navigation">
                 <div class="flex flex-wrap justify-end gap-1">

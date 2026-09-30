@@ -10,12 +10,17 @@ const ShowService = {
 
     return querySnapshot.docs.map((showDoc) => {
       const data = showDoc.data()
+      const whereToWatch: string[] = Array.isArray(data.whereToWatch)
+        ? data.whereToWatch.filter((streamingId): streamingId is string => typeof streamingId === 'string')
+        : typeof data.whereToWatch === 'string'
+          ? [data.whereToWatch]
+          : []
 
       return {
         id: showDoc.id,
         title: data.title,
         notes: data.notes,
-        whereToWatch: data.whereToWatch,
+        whereToWatch,
       } satisfies ShowInterface
     })
   },

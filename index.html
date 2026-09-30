@@ -4,10 +4,20 @@
     <meta charset="UTF-8">
     <link rel="icon" href="/favicon.ico">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vite App</title>
+    <title>Watch Later</title>
   </head>
   <body>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
+    <!-- Script para registrar o Service Worker -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/src/assets/service-worker.js')
+                    .then((reg) => console.log('Service Worker registrado com sucesso:', reg.scope))
+                    .catch((err) => console.log('Falha ao registrar o Service Worker:', err));
+            });
+        }
+    </script>
   </body>
 </html>

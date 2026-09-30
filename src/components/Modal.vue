@@ -13,15 +13,15 @@ const props = withDefaults(defineProps<{
 </script>
 <template>
     <div class="modal-overlay px-5">
-        <div class="modal w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-[0_24px_80px_rgba(15,23,42,0.2)]">
-            <div class="border-b border-slate-100 px-6 py-5 sm:px-8">
+        <div class="modal flex max-h-[calc(100dvh-2rem)] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-[0_24px_80px_rgba(15,23,42,0.2)]">
+            <div class="shrink-0 border-b border-slate-100 px-6 py-5 sm:px-8">
                 <p class="mb-1 text-xs font-bold uppercase tracking-[0.18em] text-[#d84d3b]">New item</p>
                 <h2 class="font-serif text-2xl font-bold text-slate-950">{{ props.title }}</h2>
             </div>
-            <div class="px-6 py-6 sm:px-8">
+            <div class="min-h-0 overflow-y-auto px-6 py-6 sm:px-8">
                 <slot></slot>
             </div>
-            <div class="flex justify-end border-t border-slate-100 bg-slate-50/70 px-6 py-4 sm:px-8 gap-3">
+            <div class="flex shrink-0 justify-end border-t border-slate-100 bg-slate-50/70 px-6 py-4 sm:px-8 gap-3">
                 <PrimaryButton text="Confirm" @click="props.submitFunction"/>
                 <SecondaryButton text="Cancel" @click="props.cancelFunction"/>
             </div>

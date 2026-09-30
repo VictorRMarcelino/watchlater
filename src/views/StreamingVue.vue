@@ -10,7 +10,6 @@ import Swal from 'sweetalert2'
 const streamings = ref<StreamingInterface[]>([])
 const isLoading = ref(true)
 const isSaving = ref(false)
-const errorMessage = ref('')
 const isModalOpen = ref(false)
 const editingStreamingId = ref<string>()
 const title = ref('')
@@ -24,12 +23,15 @@ const formatDate = (date?: Date) => {
 
 const loadStreamings = async () => {
   isLoading.value = true
-  errorMessage.value = ''
 
   try {
     streamings.value = await StreamingService.index()
   } catch {
-    errorMessage.value = 'Unable to load streamings. Please try again.'
+    await Swal.fire({
+      icon: 'error',
+      title: 'Error',
+      text: 'Unable to load streamings. Please try again.',
+    })
   } finally {
     isLoading.value = false
   }
@@ -56,7 +58,6 @@ const saveStreaming = async () => {
   if (!normalizedTitle || isSaving.value) return
 
   isSaving.value = true
-  errorMessage.value = ''
 
   try {
     if (editingStreamingId.value) {
@@ -68,7 +69,11 @@ const saveStreaming = async () => {
     closeModal()
     await loadStreamings()
   } catch {
-    errorMessage.value = 'Unable to save this streaming. Please try again.'
+    await Swal.fire({
+      icon: 'error',
+      title: 'Error',
+      text: 'Unable to save this streaming. Please try again.',
+    })
   } finally {
     isSaving.value = false
   }
@@ -91,12 +96,15 @@ const deleteStreaming = async (streaming: StreamingInterface) => {
 
   if (!result.isConfirmed) return
 
-  errorMessage.value = ''
   try {
     await StreamingService.destroy(streaming.id)
     await loadStreamings()
   } catch {
-    errorMessage.value = 'Unable to delete this streaming. Please try again.'
+    await Swal.fire({
+      icon: 'error',
+      title: 'Error',
+      text: 'Unable to delete this streaming. Please try again.',
+    })
   }
 }
 
@@ -108,16 +116,12 @@ onMounted(loadStreamings)
     <div class="mx-auto w-full">
       <section class="mb-8 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p class="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-[#d84d3b]">Watchlater library</p>
+          <p class="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-[#d84d3b]">Watch Later library</p>
           <h1 class="font-serif text-4xl font-bold tracking-tight text-slate-950 sm:text-5xl">Streamings</h1>
           <p class="mt-3 max-w-xl text-slate-500">Manage the platforms where you watch your favorite shows.</p>
         </div>
         <PrimaryButton text="Add streaming" @click="openCreateModal" />
       </section>
-
-      <p v-if="errorMessage" role="alert" class="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
-        {{ errorMessage }}
-      </p>
 
       <section class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_12px_40px_rgba(15,23,42,0.06)]" aria-labelledby="streamings-heading">
         <h2 id="streamings-heading" class="sr-only">Registered streamings</h2>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import DangerButton from '@/components/DangerButton.vue'
 import Modal from '@/components/Modal.vue'
 import PrimaryButton from '@/components/PrimaryButton.vue'
@@ -13,18 +13,24 @@ const shows = ref<ShowInterface[]>([])
 const streamings = ref<StreamingInterface[]>([])
 const isLoading = ref(true)
 const isSaving = ref(false)
-const errorMessage = ref('')
 const isModalOpen = ref(false)
 const editingShowId = ref<string>()
 const title = ref('')
 const notes = ref('')
-const whereToWatch = ref('')
+const whereToWatch = ref<string[]>([])
+const streamingSearch = ref('')
+
+const filteredStreamings = computed(() => {
+  const search = streamingSearch.value.trim().toLowerCase()
+  if (!search) return streamings.value
+
+  return streamings.value.filter((streaming) => streaming.title.toLowerCase().includes(search))
+})
 
 const modalTitle = () => editingShowId.value ? 'Edit show' : 'New show'
 
 const loadShows = async () => {
   isLoading.value = true
-  errorMessage.value = ''
 
   try {
     const [loadedShows, loadedStreamings] = await Promise.all([
@@ -34,21 +40,28 @@ const loadShows = async () => {
     shows.value = loadedShows
     streamings.value = loadedStreamings
   } catch {
-    errorMessage.value = 'Unable to load shows. Please try again.'
+    await Swal.fire({
+      icon: 'error',
+      title: 'Error',
+      text: 'Unable to load shows. Please try again.',
+    })
   } finally {
     isLoading.value = false
   }
 }
 
-const streamingTitle = (streamingId: string) => {
-  return streamings.value.find((streaming) => streaming.id === streamingId)?.title ?? 'Streaming not found'
+const streamingTitle = (streamingIds: string[]) => {
+  return streamingIds
+    .map((streamingId) => streamings.value.find((streaming) => streaming.id === streamingId)?.title ?? 'Streaming not found')
+    .join(', ')
 }
 
 const openCreateModal = () => {
   editingShowId.value = undefined
   title.value = ''
   notes.value = ''
-  whereToWatch.value = ''
+  whereToWatch.value = []
+  streamingSearch.value = ''
   isModalOpen.value = true
 }
 
@@ -57,6 +70,7 @@ const openEditModal = (show: ShowInterface) => {
   title.value = show.title
   notes.value = show.notes
   whereToWatch.value = show.whereToWatch
+  streamingSearch.value = ''
   isModalOpen.value = true
 }
 
@@ -68,12 +82,11 @@ const saveShow = async () => {
   const payload = {
     title: title.value.trim(),
     notes: notes.value.trim(),
-    whereToWatch: whereToWatch.value.trim(),
+    whereToWatch: whereToWatch.value,
   }
-  if (!payload.title || !payload.notes || !payload.whereToWatch || isSaving.value) return
+  if (!payload.title || !payload.notes || payload.whereToWatch.length === 0 || isSaving.value) return
 
   isSaving.value = true
-  errorMessage.value = ''
 
   try {
     if (editingShowId.value) {
@@ -85,7 +98,11 @@ const saveShow = async () => {
     closeModal()
     await loadShows()
   } catch {
-    errorMessage.value = 'Unable to save this show. Please try again.'
+    await Swal.fire({
+      icon: 'error',
+      title: 'Error',
+      text: 'Unable to save this show. Please try again.',
+    })
   } finally {
     isSaving.value = false
   }
@@ -108,12 +125,15 @@ const deleteShow = async (show: ShowInterface) => {
 
   if (!result.isConfirmed) return
 
-  errorMessage.value = ''
   try {
     await ShowService.destroy(show.id)
     await loadShows()
   } catch {
-    errorMessage.value = 'Unable to delete this show. Please try again.'
+    await Swal.fire({
+      icon: 'error',
+      title: 'Error',
+      text: 'Unable to delete this show. Please try again.',
+    })
   }
 }
 
@@ -125,14 +145,12 @@ onMounted(loadShows)
     <div class="mx-auto w-full flex flex-col gap-6">
       <section class="mb-8 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <div class="flex flex-col gap-6">
-          <p class="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-[#d84d3b]">Watchlater library</p>
+          <p class="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-[#d84d3b]">Watch Later library</p>
           <h1 class="font-serif text-4xl font-bold tracking-tight text-slate-950 sm:text-5xl">Shows</h1>
           <p class="mt-3 max-w-xl text-slate-500">Keep the shows you want to watch close at hand.</p>
         </div>
         <PrimaryButton text="Add show" @click="openCreateModal" />
       </section>
-
-      <p v-if="errorMessage" role="alert" class="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{{ errorMessage }}</p>
 
       <section class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_12px_40px_rgba(15,23,42,0.06)]" aria-labelledby="shows-heading">
         <h2 id="shows-heading" class="sr-only">Registered shows</h2>
@@ -180,16 +198,29 @@ onMounted(loadShows)
           <label for="show-notes" class="mb-2 block text-sm font-bold text-slate-700">Notes</label>
           <textarea id="show-notes" v-model="notes" required maxlength="500" rows="3" placeholder="Any additional notes about this show?" class="w-full resize-y rounded-xl border border-slate-200 px-4 py-3 text-slate-950 outline-none transition focus:border-[#e85d4a] focus:ring-4 focus:ring-[#e85d4a]/15"></textarea>
         </div>
-        <div>
-          <label for="show-where-to-watch" class="mb-2 block text-sm font-bold text-slate-700">Where to watch</label>
-          <select id="show-where-to-watch" v-model="whereToWatch" required class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-950 outline-none transition focus:border-[#e85d4a] focus:ring-4 focus:ring-[#e85d4a]/15">
-            <option value="" disabled>Select a streaming</option>
-            <option v-for="streaming in streamings" :key="streaming.id" :value="streaming.id">
-              {{ streaming.title }}
-            </option>
-          </select>
-          <p v-if="streamings.length === 0" class="mt-2 text-xs text-slate-500">Register a streaming before adding a show.</p>
-        </div>
+        <fieldset>
+          <legend class="mb-2 text-sm font-bold text-slate-700">Where to watch</legend>
+          <div v-if="streamings.length === 0" class="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm text-slate-500">
+            No streaming platforms registered. Register a streaming before adding a show.
+          </div>
+          <div v-else class="space-y-2">
+            <input
+              v-if="streamings.length > 5"
+              v-model="streamingSearch"
+              type="search"
+              aria-label="Search streaming platforms"
+              placeholder="Search platforms..."
+              class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-[#e85d4a] focus:ring-4 focus:ring-[#e85d4a]/15"
+            />
+            <div class="max-h-[min(12rem,25dvh)] space-y-1 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 sm:max-h-[min(16rem,30dvh)]">
+              <label v-for="streaming in filteredStreamings" :key="streaming.id" class="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-slate-700 transition-colors hover:bg-[#fffaf8] focus-within:ring-2 focus-within:ring-[#e85d4a]/30">
+                <input v-model="whereToWatch" type="checkbox" :value="streaming.id" class="size-4 shrink-0 accent-[#d84d3b]" />
+                <span>{{ streaming.title }}</span>
+              </label>
+              <p v-if="filteredStreamings.length === 0" class="px-3 py-3 text-sm text-slate-500">No platforms match your search.</p>
+            </div>
+          </div>
+        </fieldset>
       </form>
     </Modal>
   </main>

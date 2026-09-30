@@ -3,35 +3,47 @@ import type { UserInterface } from "@/interfaces/UserInterface";
 import { useAuthStore } from "@/stores/auth";
 import { createUserWithEmailAndPassword, deleteUser, signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, updateDoc } from "firebase/firestore";
+import { getFunctions, httpsCallable } from "firebase/functions";
 
-type UserPayload = Omit<UserInterface, 'id' | 'password'>;
+type UserProfilePayload = Omit<UserInterface, 'id' | 'password' | 'admin'>;
+type UserProfileUpdate = Partial<Omit<UserInterface, 'id' | 'admin'>>;
 
 const UserService = {
 
     register: async function(name: string, email: string, password: string) {
         const credential = await createUserWithEmailAndPassword(auth, email, password);
-        const user = {
+        const user: UserProfilePayload = {
             name,
-            email: credential.user.email ?? email,
-            admin: false
-        } satisfies UserPayload;
+            email: credential.user.email ?? email
+        };
 
-        await addDoc(collection(db, 'users'), user);
-
-        const token = await credential.user.getIdToken();
-        useAuthStore().setAuthentication(credential.user, token, false);
+        try {
+            const tokenResult = await credential.user.getIdTokenResult(true);
+            await addDoc(collection(db, 'users'), user);
+            useAuthStore().setAuthentication(credential.user, tokenResult.token, tokenResult.claims.admin === true);
+        } catch (error) {
+            await deleteUser(credential.user).catch(() => undefined);
+            throw error;
+        }
 
         return credential.user;
     },
 
+    createAdmin: async function(name: string, email: string, password: string) {
+        const createNewAdmin = httpsCallable<
+            { name: string; email: string; password: string },
+            { success: boolean; uid: string }
+        >(getFunctions(auth.app), "createNewAdmin");
+
+        return createNewAdmin({ name, email, password });
+    },
+
     login: async function(email: string, password: string) {
         const credential = await signInWithEmailAndPassword(auth, email, password);
-        const token = await credential.user.getIdToken();
+        const tokenResult = await credential.user.getIdTokenResult(true);
         const authStore = useAuthStore();
-        const usersSnapshot = await getDocs(collection(db, 'users'));
-        const userProfile = usersSnapshot.docs.find((userDocument) => userDocument.data().email === email);
 
-        authStore.setAuthentication(credential.user, token, userProfile?.data().admin === true);
+        authStore.setAuthentication(credential.user, tokenResult.token, tokenResult.claims.admin === true);
 
         return credential.user;
     },
@@ -50,14 +62,13 @@ const UserService = {
                 id: doc.id,
                 name: data.name,
                 email: data.email,
-                password: data.password,
-                admin: data.admin === true
+                password: data.password
             } satisfies UserInterface;
         }) as UserInterface[];
         return users;
     },
 
-    update: function(id: string, task: Partial<UserInterface>) {
+    update: function(id: string, task: UserProfileUpdate) {
         return updateDoc(doc(db, 'users', id), task);
     },
 

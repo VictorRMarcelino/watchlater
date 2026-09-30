@@ -1,67 +1,65 @@
-# watchlater
+# Watch Later
 
-This template should help get you started developing with Vue 3 in Vite.
+Aplicação web para organizar o que você quer assistir. Cadastre títulos, anotações e serviços de streaming em uma biblioteca compartilhada, com acesso protegido por conta.
 
-## Recommended IDE Setup
+## Recursos
 
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+- Cadastro, login e encerramento de sessão com Firebase Authentication.
+- Criação, edição e remoção de títulos e plataformas de streaming.
+- Associação de um título a uma ou mais plataformas.
+- Administração de usuários e plataformas para contas com permissão de administrador.
+- Interface responsiva construída como SPA em Vue.
 
-## Recommended Browser Setup
+## Tecnologias
 
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd)
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
+Vue 3 · TypeScript · Vite · Vue Router · Pinia · Tailwind CSS 4 · Firebase Authentication · Cloud Firestore · SweetAlert2
 
-## Type Support for `.vue` Imports in TS
+Testes: Vitest, Vue Test Utils e Playwright.
 
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
+## Rotas
 
-## Customize configuration
+| Caminho | Página | Acesso |
+| --- | --- | --- |
+| `/` | Plataformas de streaming | Administrador |
+| `/shows` | Biblioteca de títulos | Conta autenticada |
+| `/users` | Gerenciamento de usuários | Administrador |
+| `/login` | Entrar | Público |
+| `/register` | Criar conta | Público |
 
-See [Vite Configuration Reference](https://vite.dev/config/).
+As rotas protegidas redirecionam visitantes para o login. A permissão administrativa usa a custom claim `admin` do Firebase Authentication, que deve ser concedida em um ambiente confiável, fora do cliente.
 
-## Project Setup
+## Configuração
+
+Requisitos: Node.js `^22.18.0` ou `>=24.12.0` e npm.
+
+1. Instale as dependências e crie seu arquivo de ambiente:
+
+   ```sh
+   npm install
+   cp .env.example .env
+   ```
+
+2. Preencha no `.env` as credenciais de um projeto Firebase:
+
+   ```dotenv
+   VITE_FIREBASE_API_KEY=
+   VITE_FIREBASE_AUTH_DOMAIN=
+   VITE_FIREBASE_PROJECT_ID=
+   VITE_FIREBASE_STORAGE_BUCKET=
+   VITE_FIREBASE_MESSAGING_SENDER_ID=
+   VITE_FIREBASE_APP_ID=
+   ```
+
+3. Ative o provedor de e-mail e senha no Firebase Authentication e configure o Cloud Firestore e suas regras de acesso. Guards de rota no cliente não substituem as regras de segurança do banco.
+
+## Desenvolvimento e validação
 
 ```sh
-npm install
+npm run dev           # servidor de desenvolvimento
+npm run type-check    # validação TypeScript e Vue
+npm run test:unit -- --run
+npm run build         # validação de tipos e build de produção
+npm run preview       # pré-visualização do build
 ```
 
-### Compile and Hot-Reload for Development
-
-```sh
-npm run dev
-```
-
-### Type-Check, Compile and Minify for Production
-
-```sh
-npm run build
-```
-
-### Run Unit Tests with [Vitest](https://vitest.dev/)
-
-```sh
-npm run test:unit
-```
-
-### Run End-to-End Tests with [Playwright](https://playwright.dev)
-
-```sh
-# Install browsers for the first run
-npx playwright install
-
-# When testing on CI, must build the project first
-npm run build
-
-# Runs the end-to-end tests
-npm run test:e2e
-# Runs the tests only on Chromium
-npm run test:e2e -- --project=chromium
-# Runs the tests of a specific file
-npm run test:e2e -- tests/example.spec.ts
-# Runs the tests in debug mode
-npm run test:e2e -- --debug
-```
+A infraestrutura E2E usa Playwright, mas ainda não há cenários ativos. Para executar os testes, instale os navegadores com `npx playwright install` e rode `npm run test:e2e`. No CI, gere o build antes: `npm run build`.

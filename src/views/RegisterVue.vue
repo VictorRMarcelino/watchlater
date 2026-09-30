@@ -2,25 +2,43 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import UserService from '@/services/UserService'
+import Swal from 'sweetalert2'
 
 const router = useRouter()
 const name = ref('')
 const email = ref('')
 const password = ref('')
-const errorMessage = ref('')
 const isSubmitting = ref(false)
+
+const getRegistrationErrorMessage = (error: unknown) => {
+  const code = typeof error === 'object' && error !== null && 'code' in error
+    ? String(error.code)
+    : ''
+
+  if (code === 'auth/email-already-in-use') return 'An account with this email already exists. Sign in instead.'
+  if (code === 'auth/invalid-email') return 'Enter a valid email address.'
+  if (code === 'auth/weak-password') return 'Choose a stronger password with at least 6 characters.'
+  if (code === 'auth/operation-not-allowed') return 'Email and password sign-up is disabled in Firebase Authentication.'
+  if (code === 'permission-denied') return 'Your account could not be saved. Check the Firestore security rules for the users collection.'
+  if (code === 'auth/network-request-failed' || code === 'unavailable') return 'A network error prevented account creation. Check your connection and try again.'
+
+  return 'Unable to create the account. Check the data and try again.'
+}
 
 const register = async () => {
   if (isSubmitting.value) return
 
   isSubmitting.value = true
-  errorMessage.value = ''
 
   try {
     await UserService.register(name.value.trim(), email.value.trim(), password.value)
     await router.push('/')
-  } catch {
-    errorMessage.value = 'Unable to create the account. Check the data and try again.'
+  } catch (error) {
+    await Swal.fire({
+      icon: 'error',
+      title: 'Error',
+      text: getRegistrationErrorMessage(error),
+    })
   } finally {
     isSubmitting.value = false
   }
@@ -33,8 +51,6 @@ const register = async () => {
       <p class="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-[#d84d3b]">Start watching</p>
       <h1 class="font-serif text-4xl font-bold tracking-tight text-slate-950">Create account</h1>
       <p class="mt-3 text-slate-500">Save your favorite shows in one place.</p>
-
-      <p v-if="errorMessage" role="alert" class="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{{ errorMessage }}</p>
 
       <form class="mt-7 space-y-5 gap-6 flex flex-col" @submit.prevent="register">
         <div>

@@ -11,22 +11,30 @@ const users = ref<UserInterface[]>([])
 const router = useRouter()
 const isLoading = ref(true)
 const isSaving = ref(false)
-const errorMessage = ref('')
 const isModalOpen = ref(false)
+const isCreateAdminModalOpen = ref(false)
+const isCreatingAdmin = ref(false)
 const editingUserId = ref<string>()
 const name = ref('')
 const email = ref('')
+const adminName = ref('')
+const adminEmail = ref('')
+const adminPassword = ref('')
+const createAdminForm = ref<HTMLFormElement | null>(null)
 
 const modalTitle = () => 'Edit user'
 
 const loadUsers = async () => {
   isLoading.value = true
-  errorMessage.value = ''
 
   try {
     users.value = await UserService.index()
   } catch {
-    errorMessage.value = 'Unable to load users. Please try again.'
+    await Swal.fire({
+      icon: 'error',
+      title: 'Error',
+      text: 'Unable to load users. Please try again.',
+    })
   } finally {
     isLoading.value = false
   }
@@ -43,13 +51,58 @@ const closeModal = () => {
   if (!isSaving.value) isModalOpen.value = false
 }
 
+const openCreateAdminModal = () => {
+  adminName.value = ''
+  adminEmail.value = ''
+  adminPassword.value = ''
+  isCreateAdminModalOpen.value = true
+}
+
+const closeCreateAdminModal = () => {
+  if (isCreatingAdmin.value) return
+  isCreateAdminModalOpen.value = false
+}
+
+const getAdminCreationErrorMessage = (error: unknown) => {
+  const code = typeof error === 'object' && error !== null && 'code' in error
+    ? String(error.code)
+    : ''
+
+  if (code === 'functions/already-exists') return 'An account with this email already exists.'
+  if (code === 'functions/permission-denied') return 'Only administrators can create other administrators.'
+  if (code === 'functions/unauthenticated') return 'Sign in again to create an administrator.'
+  return 'Unable to create this administrator. Check the details and try again.'
+}
+
+const createAdmin = async () => {
+  if (isCreatingAdmin.value || !createAdminForm.value?.reportValidity()) return
+
+  isCreatingAdmin.value = true
+
+  try {
+    await UserService.createAdmin(adminName.value.trim(), adminEmail.value.trim(), adminPassword.value)
+    isCreateAdminModalOpen.value = false
+    adminName.value = ''
+    adminEmail.value = ''
+    adminPassword.value = ''
+    await loadUsers()
+  } catch (error) {
+    await Swal.fire({
+      icon: 'error',
+      title: 'Error',
+      text: getAdminCreationErrorMessage(error),
+    })
+  } finally {
+    isCreatingAdmin.value = false
+  }
+}
+
 const saveUser = async () => {
   const normalizedName = name.value.trim()
   const normalizedEmail = email.value.trim()
   if (!normalizedName || !normalizedEmail || !editingUserId.value || isSaving.value) return
 
   isSaving.value = true
-  errorMessage.value = ''
 
   try {
     await UserService.update(editingUserId.value, { name: normalizedName, email: normalizedEmail })
@@ -57,7 +110,11 @@ const saveUser = async () => {
     closeModal()
     await loadUsers()
   } catch {
-    errorMessage.value = 'Unable to save this user. Please try again.'
+    await Swal.fire({
+      icon: 'error',
+      title: 'Error',
+      text: 'Unable to save this user. Please try again.',
+    })
   } finally {
     isSaving.value = false
   }
@@ -80,7 +137,6 @@ const deleteUser = async (user: UserInterface) => {
 
   if (!result.isConfirmed) return
 
-  errorMessage.value = ''
   try {
     const deletesCurrentUser = await UserService.destroy(user.id)
 
@@ -91,7 +147,11 @@ const deleteUser = async (user: UserInterface) => {
 
     await loadUsers()
   } catch {
-    errorMessage.value = 'Unable to delete this user. Please try again.'
+    await Swal.fire({
+      icon: 'error',
+      title: 'Error',
+      text: 'Unable to delete this user. Please try again.',
+    })
   }
 }
 
@@ -103,13 +163,12 @@ onMounted(loadUsers)
     <div class="mx-auto w-full">
       <section class="mb-8 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p class="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-[#d84d3b]">Watchlater account</p>
+          <p class="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-[#d84d3b]">Watch Later account</p>
           <h1 class="font-serif text-4xl font-bold tracking-tight text-slate-950 sm:text-5xl">Users</h1>
-          <p class="mt-3 max-w-xl text-slate-500">Manage the people with access to your Watchlater account.</p>
+          <p class="mt-3 max-w-xl text-slate-500">Manage the people with access to your Watch Later account.</p>
         </div>
+        <button type="button" class="rounded-xl bg-[#e85d4a] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#d84d3b] focus:outline-none focus:ring-4 focus:ring-[#e85d4a]/20" @click="openCreateAdminModal">Adicionar Administrador</button>
       </section>
-
-      <p v-if="errorMessage" role="alert" class="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{{ errorMessage }}</p>
 
       <section class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_12px_40px_rgba(15,23,42,0.06)]" aria-labelledby="users-heading">
         <h2 id="users-heading" class="sr-only">Registered users</h2>
@@ -153,6 +212,23 @@ onMounted(loadUsers)
         <div>
           <label for="user-email" class="mb-2 block text-sm font-bold text-slate-700">Email</label>
           <input id="user-email" v-model="email" type="email" required maxlength="160" placeholder="alex@example.com" class="w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-950 outline-none transition focus:border-[#e85d4a] focus:ring-4 focus:ring-[#e85d4a]/15" />
+        </div>
+      </form>
+    </Modal>
+
+    <Modal v-if="isCreateAdminModalOpen" title="Add administrator" :submit-function="createAdmin" :cancel-function="closeCreateAdminModal">
+      <form ref="createAdminForm" class="space-y-4" @submit.prevent="createAdmin">
+        <div>
+          <label for="admin-name" class="mb-2 block text-sm font-bold text-slate-700">Name</label>
+          <input id="admin-name" v-model="adminName" type="text" required maxlength="120" autocomplete="name" class="w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-950 outline-none transition focus:border-[#e85d4a] focus:ring-4 focus:ring-[#e85d4a]/15" />
+        </div>
+        <div>
+          <label for="admin-email" class="mb-2 block text-sm font-bold text-slate-700">Email</label>
+          <input id="admin-email" v-model="adminEmail" type="email" required maxlength="160" autocomplete="email" class="w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-950 outline-none transition focus:border-[#e85d4a] focus:ring-4 focus:ring-[#e85d4a]/15" />
+        </div>
+        <div>
+          <label for="admin-password" class="mb-2 block text-sm font-bold text-slate-700">Password</label>
+          <input id="admin-password" v-model="adminPassword" type="password" required minlength="6" autocomplete="new-password" class="w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-950 outline-none transition focus:border-[#e85d4a] focus:ring-4 focus:ring-[#e85d4a]/15" />
         </div>
       </form>
     </Modal>

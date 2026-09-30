@@ -2,26 +2,29 @@
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import UserService from '@/services/UserService'
+import Swal from 'sweetalert2'
 
 const router = useRouter()
 const route = useRoute()
 const email = ref('')
 const password = ref('')
-const errorMessage = ref('')
 const isSubmitting = ref(false)
 
 const login = async () => {
   if (isSubmitting.value) return
 
   isSubmitting.value = true
-  errorMessage.value = ''
 
   try {
     await UserService.login(email.value.trim(), password.value)
     const redirect = route.query.redirect
     await router.push(typeof redirect === 'string' && redirect.startsWith('/') ? redirect : '/')
   } catch {
-    errorMessage.value = 'Unable to sign in. Check your email and password.'
+    await Swal.fire({
+      icon: 'error',
+      title: 'Error',
+      text: 'Unable to sign in. Check your email and password.',
+    })
   } finally {
     isSubmitting.value = false
   }
@@ -33,9 +36,7 @@ const login = async () => {
     <section class="w-full max-w-md rounded-2xl border border-slate-200/80 bg-white p-6 shadow-[0_12px_40px_rgba(15,23,42,0.06)] sm:p-8 gap-6 flex flex-col">
       <p class="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-[#d84d3b]">Welcome back</p>
       <h1 class="font-serif text-4xl font-bold tracking-tight text-slate-950">Sign in</h1>
-      <p class="mt-3 text-slate-500">Access your Watchlater library.</p>
-
-      <p v-if="errorMessage" role="alert" class="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{{ errorMessage }}</p>
+      <p class="mt-3 text-slate-500">Access your Watch Later library.</p>
 
       <form class="mt-7 space-y-5 gap-6 flex flex-col" @submit.prevent="login">
         <div>
@@ -51,7 +52,7 @@ const login = async () => {
         </button>
       </form>
 
-      <p class="mt-6 text-center text-sm text-slate-500">New to Watchlater? <RouterLink to="/register" class="font-bold text-[#d84d3b] hover:underline">Create an account</RouterLink></p>
+      <p class="mt-6 text-center text-sm text-slate-500">New to Watch Later? <RouterLink to="/register" class="font-bold text-[#d84d3b] hover:underline">Create an account</RouterLink></p>
     </section>
   </main>
 </template>
