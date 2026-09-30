@@ -12,9 +12,21 @@ Aplicação web para organizar o que você quer assistir. Cadastre títulos, ano
 
 ## Tecnologias
 
-Vue 3 · TypeScript · Vite · Vue Router · Pinia · Tailwind CSS 4 · Firebase Authentication · Cloud Firestore · SweetAlert2
+[![Vue 3](https://img.shields.io/badge/Vue%203-4FC08D?style=for-the-badge&logo=vuedotjs&logoColor=white)](https://vuejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
+[![Vue Router](https://img.shields.io/badge/Vue%20Router-4FC08D?style=for-the-badge&logo=vuedotjs&logoColor=white)](https://router.vuejs.org/)
+[![Pinia](https://img.shields.io/badge/Pinia-FFD859?style=for-the-badge&logo=pinia&logoColor=black)](https://pinia.vuejs.org/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-38B2AC?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+[![Firebase](https://img.shields.io/badge/Firebase-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)](https://firebase.google.com/)
+[![Cloud Firestore](https://img.shields.io/badge/Cloud%20Firestore-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)](https://firebase.google.com/docs/firestore)
+[![SweetAlert2](https://img.shields.io/badge/SweetAlert2-7B3F00?style=for-the-badge&logo=javascript&logoColor=white)](https://sweetalert2.github.io/)
 
-Testes: Vitest, Vue Test Utils e Playwright.
+### Testes
+
+[![Vitest](https://img.shields.io/badge/Vitest-6E9F18?style=for-the-badge&logo=vitest&logoColor=white)](https://vitest.dev/)
+[![Vue Test Utils](https://img.shields.io/badge/Vue%20Test%20Utils-4FC08D?style=for-the-badge&logo=vuedotjs&logoColor=white)](https://test-utils.vuejs.org/)
+[![Playwright](https://img.shields.io/badge/Playwright-45BA4B?style=for-the-badge&logo=playwright&logoColor=white)](https://playwright.dev/)
 
 ## Rotas
 
