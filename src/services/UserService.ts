@@ -15,7 +15,9 @@ const UserService = {
 
         try {
             await UserService.defineUserAdmin(credential.user.uid);
-        } catch (error) {}
+        } catch (error) {
+            console.error("Erro ao definir usuário como administrador:", error);
+        }
 
         const user: UserProfilePayload = {
             name,
