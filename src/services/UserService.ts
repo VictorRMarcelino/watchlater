@@ -12,6 +12,11 @@ const UserService = {
 
     register: async function(name: string, email: string, password: string) {
         const credential = await createUserWithEmailAndPassword(auth, email, password);
+
+        try {
+            await UserService.defineUserAdmin(credential.user.uid);
+        } catch (error) {}
+
         const user: UserProfilePayload = {
             name,
             email: credential.user.email ?? email
@@ -29,13 +34,22 @@ const UserService = {
         return credential.user;
     },
 
-    createAdmin: async function(name: string, email: string, password: string) {
-        const createNewAdmin = httpsCallable<
+    defineNewUserAdmin: async function(name: string, email: string, password: string) {
+        const defineNewUserAdmin = httpsCallable<
             { name: string; email: string; password: string },
             { success: boolean; uid: string }
-        >(getFunctions(auth.app), "createNewAdmin");
+        >(getFunctions(auth.app), "defineNewUserAdmin");
 
-        return createNewAdmin({ name, email, password });
+        return defineNewUserAdmin({ name, email, password });
+    },
+
+    defineUserAdmin: async function(uid: string) {
+        const defineUserAdmin = httpsCallable<
+            { uid: string },
+            { success: boolean; uid: string }
+        >(getFunctions(auth.app), "defineUserAdmin");
+
+        return defineUserAdmin({ uid });
     },
 
     login: async function(email: string, password: string) {

@@ -1,38 +1,52 @@
-import {setGlobalOptions} from "firebase-functions";
-
-setGlobalOptions({maxInstances: 10});
-
-import * as functions from "firebase-functions/v1";
+import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
+const db = admin.firestore();
+
+functions.setGlobalOptions({maxInstances: 10});
 
 admin.initializeApp();
 
-export const createNewAdmin = functions.https.onCall(async (data, context) => {
-  if (!context.auth || context.auth.token.admin !== true) {
+export const defineNewUserAdmin = functions.https.onCall(async (request) => {
+  const uid = request.data.uid;
+
+  try {
+    const adminsSnapshot = await db.collection("admins").limit(1).get();
+    const hasAnyAdmin = !adminsSnapshot.empty;
+
+    if (!hasAnyAdmin) {
+      await admin.auth().setCustomUserClaims(uid, { admin: true });
+      await db.collection("admins").doc(uid).set({
+        createAt: admin.firestore.FieldValue.serverTimestamp(),
+        firstAdmin: true,
+      });
+    }
+
+  } catch (error) {
+    const err = error as Error;
+    throw new functions.https.HttpsError("internal", err.message);
+  }
+});
+
+export const defineUserAdmin = functions.https.onCall(async (request) => {
+  if (!request.auth || request.auth.token.admin !== true) {
     throw new functions.https.HttpsError(
       "permission-denied",
-      "Apenas administradores podem cadastrar novos administradores."
+      "Apenas administradores podem definir outros administradores."
     );
   }
 
-  const {email, password, name} = data;
+  const { uid } = request.data;
 
-  try {
-    const userRecord = await admin.auth().createUser({
-      email: email,
-      password: password,
-    });
-
-    await admin.auth().setCustomUserClaims(userRecord.uid, {admin: true});
-    await admin.firestore().collection("users").doc(userRecord.uid).set({
-      name: name,
-      email: email,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
-
-    return {success: true, uid: userRecord.uid};
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : "Erro desconhecido";
-    throw new functions.https.HttpsError("internal", errorMessage);
+  if (!uid) {
+    throw new functions.https.HttpsError("invalid-argument", "O UID do usuário é obrigatório.");
   }
+
+  await admin.auth().setCustomUserClaims(uid, { admin: true });
+  await db.collection("admins").doc(uid).set({
+          createAt: admin.firestore.FieldValue.serverTimestamp(),
+          firstAdmin: false,
+          createdBy: request.auth.uid,
+        });
+
+  return { success: true, message: `Usuário ${uid} agora é um administrador.` };
 });

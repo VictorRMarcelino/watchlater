@@ -26,6 +26,7 @@ This repository is a Vue 3 + Vite + TypeScript application for a watchlist app. 
 - For Vue Router navigation, prefer `useRouter()` and `RouterLink` following the current component patterns.
 - Keep component logic simple and declarative; avoid unnecessary abstraction when a direct solution is clearer.
 - Preserve existing formatting, indentation, and naming consistency even when making small updates.
+- Every time you need to show a message to the user, use the SweetAlert2 library already integrated in the project, instead of using `alert()` or `console.log()`.
 
 ## Validation
 Before considering a change complete, validate it with the smallest relevant command:
