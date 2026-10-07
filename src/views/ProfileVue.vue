@@ -55,9 +55,11 @@ const saveProfile = async () => {
     await Swal.fire({
       icon: 'error',
       title: 'Erro',
-      text: code === 'auth/requires-recent-login'
-        ? 'Para alterar seu email, saia e entre novamente antes de tentar de novo.'
-        : 'Não foi possível salvar seu perfil. Verifique os dados e tente novamente.',
+      text: code === 'auth/email-already-in-use'
+        ? 'Este email já está em uso. Informe outro endereço.'
+        : code === 'auth/requires-recent-login'
+          ? 'Para alterar seu email, saia e entre novamente antes de tentar de novo.'
+          : 'Não foi possível salvar seu perfil. Verifique os dados e tente novamente.',
     })
   } finally {
     isSaving.value = false

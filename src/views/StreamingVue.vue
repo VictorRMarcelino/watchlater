@@ -113,9 +113,9 @@ onMounted(loadStreamings)
 
 <template>
   <main class="min-h-[calc(100vh-155px)] bg-[#f8f7f3] px-5 py-10 sm:px-8 lg:py-16">
-    <div class="mx-auto w-full">
+    <div class="mx-auto w-full flex flex-col gap-6"">
       <section class="mb-8 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-        <div>
+        <div class="flex flex-col gap-6">
           <p class="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-[#d84d3b]">Watch Later library</p>
           <h1 class="font-serif text-4xl font-bold tracking-tight text-slate-950 sm:text-5xl">Streamings</h1>
           <p class="mt-3 max-w-xl text-slate-500">Manage the platforms where you watch your favorite shows.</p>

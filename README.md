@@ -38,7 +38,7 @@ Aplicação web para organizar o que você quer assistir. Cadastre títulos, ano
 | `/login` | Entrar | Público |
 | `/register` | Criar conta | Público |
 
-As rotas protegidas redirecionam visitantes para o login. A permissão administrativa usa a custom claim `admin` do Firebase Authentication, que deve ser concedida em um ambiente confiável, fora do cliente.
+As rotas protegidas redirecionam visitantes para o login. A permissão administrativa é lida do campo `admin` em `users/{uid}`; as regras do Firestore impedem que o próprio usuário altere esse campo. A conta `victorrasmarcelino@gmail.com` é a conta inicial de administrador.
 
 ## Configuração
 
@@ -60,9 +60,17 @@ Requisitos: Node.js `^22.18.0` ou `>=24.12.0` e npm.
    VITE_FIREBASE_STORAGE_BUCKET=
    VITE_FIREBASE_MESSAGING_SENDER_ID=
    VITE_FIREBASE_APP_ID=
+   VITE_FIREBASE_INITIAL_ADMIN_EMAIL=
    ```
 
-3. Ative o provedor de e-mail e senha no Firebase Authentication e configure o Cloud Firestore e suas regras de acesso. Guards de rota no cliente não substituem as regras de segurança do banco.
+3. Ative o provedor de e-mail e senha no Firebase Authentication e configure o Cloud Firestore.
+4. Publique as regras de segurança antes de disponibilizar a aplicação:
+
+   ```sh
+   npx firebase-tools deploy --only firestore:rules
+   ```
+
+   Os perfis novos são gravados em `users/{uid}`. Perfis legados são migrados para esse formato no primeiro login; usuários que dependiam apenas da antiga custom claim não mantêm automaticamente a permissão e devem entrar uma vez para serem promovidos pela conta administradora inicial. Guards de rota no cliente não substituem as regras de segurança do banco.
 
 ## Desenvolvimento e validação
 

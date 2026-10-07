@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 import DangerButton from '@/components/DangerButton.vue'
 import Modal from '@/components/Modal.vue'
 import UserService from '@/services/UserService'
@@ -9,6 +10,7 @@ import Swal from 'sweetalert2'
 
 const users = ref<UserInterface[]>([])
 const router = useRouter()
+const authStore = useAuthStore()
 const isLoading = ref(true)
 const isSaving = ref(false)
 const isModalOpen = ref(false)
@@ -16,6 +18,7 @@ const promotingAdminUserId = ref<string>()
 const editingUserId = ref<string>()
 const name = ref('')
 const email = ref('')
+const initialAdminEmail = 'victorrasmarcelino@gmail.com'
 
 const modalTitle = () => 'Edit user'
 
@@ -46,61 +49,82 @@ const closeModal = () => {
   if (!isSaving.value) isModalOpen.value = false
 }
 
-const getAdminPromotionErrorMessage = (error: unknown) => {
-  const code = typeof error === 'object' && error !== null && 'code' in error
-    ? String(error.code)
-    : ''
-
-  if (code === 'functions/permission-denied') return 'Only administrators can create other administrators.'
-  if (code === 'functions/unauthenticated') return 'Sign in again to create an administrator.'
-  return 'Unable to make this user an administrator. Please try again.'
-}
-
 const makeAdmin = async (user: UserInterface) => {
   if (!user.id || promotingAdminUserId.value) return
+
+  if (!user.uid) {
+    await Swal.fire({
+      icon: 'info',
+      title: 'User sign-in required',
+      text: 'This user must sign in once before administrator access can be changed.',
+    })
+    return
+  }
+
+  if (user.admin && user.email.toLowerCase() === initialAdminEmail) {
+    await Swal.fire({
+      icon: 'info',
+      title: 'Initial administrator',
+      text: 'The initial administrator account cannot be demoted.',
+    })
+    return
+  }
 
   promotingAdminUserId.value = user.id
 
   try {
-    await UserService.defineUserAdmin(user.id)
+    await UserService.setAdmin(user.uid, !user.admin)
+    user.admin = !user.admin
+    const removesOwnAdminAccess = user.uid === authStore.user?.uid && !user.admin
     await Swal.fire({
       icon: 'success',
       title: 'Administrator updated',
-      text: `${user.name} is now an administrator.`,
+      text: `${user.name} ${user.admin ? 'is now an administrator.' : 'is no longer an administrator.'}`,
     })
+    if (removesOwnAdminAccess) await router.push('/shows')
   } catch (error) {
+    const code = typeof error === 'object' && error !== null && 'code' in error
+      ? String(error.code)
+      : ''
     await Swal.fire({
       icon: 'error',
       title: 'Error',
-      text: getAdminPromotionErrorMessage(error),
+      text: code === 'permission-denied'
+        ? 'Only administrators can change administrator access.'
+        : 'Unable to update administrator access. Please try again.',
     })
   } finally {
     promotingAdminUserId.value = undefined
   }
 }
 
-const saveUser = async () => {
-  const normalizedName = name.value.trim()
-  const normalizedEmail = email.value.trim()
-  if (!normalizedName || !normalizedEmail || !editingUserId.value || isSaving.value) return
+// const saveUser = async () => {
+//   const normalizedName = name.value.trim()
+//   const normalizedEmail = email.value.trim()
+//   if (!normalizedName || !normalizedEmail || !editingUserId.value || isSaving.value) return
 
-  isSaving.value = true
+//   isSaving.value = true
 
-  try {
-    await UserService.update(editingUserId.value, { name: normalizedName, email: normalizedEmail })
+//   try {
+//     await UserService.update(editingUserId.value, { name: normalizedName })
 
-    closeModal()
-    await loadUsers()
-  } catch {
-    await Swal.fire({
-      icon: 'error',
-      title: 'Error',
-      text: 'Unable to save this user. Please try again.',
-    })
-  } finally {
-    isSaving.value = false
-  }
-}
+//     closeModal()
+//     await loadUsers()
+//   } catch (error) {
+//     const code = typeof error === 'object' && error !== null && 'code' in error
+//       ? String(error.code)
+//       : ''
+//     await Swal.fire({
+//       icon: 'error',
+//       title: 'Error',
+//       text: code === 'auth/email-already-in-use'
+//         ? 'This email is already in use. Enter a different email address.'
+//         : 'Unable to save this user. Please try again.',
+//     })
+//   } finally {
+//     isSaving.value = false
+//   }
+// }
 
 const deleteUser = async (user: UserInterface) => {
   if (!user.id) return
@@ -142,9 +166,9 @@ onMounted(loadUsers)
 
 <template>
   <main class="min-h-[calc(100vh-155px)] bg-[#f8f7f3] px-5 py-10 sm:px-8 lg:py-16">
-    <div class="mx-auto w-full">
+    <div class="mx-auto w-full flex flex-col gap-6">
       <section class="mb-8 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-        <div>
+        <div class="flex flex-col gap-6">
           <p class="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-[#d84d3b]">Watch Later account</p>
           <h1 class="font-serif text-4xl font-bold tracking-tight text-slate-950 sm:text-5xl">Users</h1>
           <p class="mt-3 max-w-xl text-slate-500">Manage the people with access to your Watch Later account.</p>
@@ -174,7 +198,7 @@ onMounted(loadUsers)
                 <td class="px-6 py-4">
                   <div class="flex justify-end gap-2">
                     <button type="button" class="rounded-lg px-3 py-2 text-sm font-bold text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-950 focus:outline-none focus:ring-4 focus:ring-slate-200" :aria-label="`Edit ${user.name}`" @click="openEditModal(user)">Edit</button>
-                    <button type="button" class="rounded-lg px-3 py-2 text-sm font-bold text-[#b63b2c] transition-colors hover:bg-[#fff0ed] focus:outline-none focus:ring-4 focus:ring-[#e85d4a]/20 disabled:cursor-not-allowed disabled:opacity-50" :disabled="Boolean(promotingAdminUserId)" @click="makeAdmin(user)">{{ promotingAdminUserId === user.id ? 'Updating...' : 'Tornar Administrador' }}</button>
+                    <button type="button" class="rounded-lg px-3 py-2 text-sm font-bold text-[#b63b2c] transition-colors hover:bg-[#fff0ed] focus:outline-none focus:ring-4 focus:ring-[#e85d4a]/20 disabled:cursor-not-allowed disabled:opacity-50" :disabled="Boolean(promotingAdminUserId)" @click="makeAdmin(user)">{{ promotingAdminUserId === user.id ? 'Updating...' : user.admin ? 'Remover Administrador' : 'Tornar Administrador' }}</button>
                     <DangerButton text="Delete" @click="deleteUser(user)" />
                   </div>
                 </td>
@@ -185,7 +209,7 @@ onMounted(loadUsers)
       </section>
     </div>
 
-    <Modal v-if="isModalOpen" :title="modalTitle()" :submit-function="saveUser" :cancel-function="closeModal">
+    <!-- <Modal v-if="isModalOpen" :title="modalTitle()" :submit-function="saveUser" :cancel-function="closeModal">
       <form class="space-y-4" @submit.prevent="saveUser">
         <div>
           <label for="user-name" class="mb-2 block text-sm font-bold text-slate-700">Name</label>
@@ -196,6 +220,6 @@ onMounted(loadUsers)
           <input id="user-email" v-model="email" type="email" required maxlength="160" placeholder="alex@example.com" class="w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-950 outline-none transition focus:border-[#e85d4a] focus:ring-4 focus:ring-[#e85d4a]/15" />
         </div>
       </form>
-    </Modal>
+    </Modal> -->
   </main>
 </template>

@@ -13,11 +13,15 @@ export const useAuthStore = defineStore('auth', () => {
     isAdmin.value = admin
   }
 
+  function setAdminStatus(admin: boolean) {
+    isAdmin.value = admin
+  }
+
   function clearAuthentication() {
     user.value = null
     token.value = null
     isAdmin.value = false
   }
 
-  return { token, user, isAdmin, setAuthentication, clearAuthentication }
+  return { token, user, isAdmin, setAuthentication, setAdminStatus, clearAuthentication }
 })

@@ -155,7 +155,7 @@ onMounted(loadShows)
       <section class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_12px_40px_rgba(15,23,42,0.06)]" aria-labelledby="shows-heading">
         <h2 id="shows-heading" class="sr-only">Registered shows</h2>
         <div v-if="isLoading" class="px-6 py-16 text-center text-sm text-slate-500">Loading shows...</div>
-        <div v-else-if="shows.length === 0" class="px-6 py-16 text-center">
+        <div v-else-if="shows.length === 0" class="px-6 py-16 text-center flex flex-col gap-3">
           <p class="font-serif text-2xl font-bold text-slate-950">No shows yet</p>
           <p class="mt-2 text-sm text-slate-500">Add your first show to start building your watchlist.</p>
           <button type="button" class="mt-5 text-sm font-bold text-[#d84d3b] underline-offset-4 hover:underline" @click="openCreateModal">Add a show</button>
@@ -189,7 +189,7 @@ onMounted(loadShows)
     </div>
 
     <Modal v-if="isModalOpen" :title="modalTitle()" :submit-function="saveShow" :cancel-function="closeModal">
-      <form class="space-y-4" @submit.prevent="saveShow">
+      <form class="space-y-4 flex flex-col gap-6" @submit.prevent="saveShow">
         <div>
           <label for="show-title" class="mb-2 block text-sm font-bold text-slate-700">Title</label>
           <input id="show-title" v-model="title" type="text" required maxlength="120" autofocus placeholder="e.g. Severance" class="w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-950 outline-none transition focus:border-[#e85d4a] focus:ring-4 focus:ring-[#e85d4a]/15" />

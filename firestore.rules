@@ -1,0 +1,89 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function initialAdmin() {
+      return signedIn()
+        && request.auth.token.email is string
+        && request.auth.token.email.lower() == 'victorrasmarcelino@gmail.com';
+    }
+
+    function userDocument(uid) {
+      return /databases/$(database)/documents/users/$(uid);
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && exists(userDocument(request.auth.uid))
+        && get(userDocument(request.auth.uid)).data.admin == true;
+    }
+
+    function isValidUserCreate(uid) {
+      return signedIn()
+        && uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid', 'name', 'email', 'admin'])
+        && request.resource.data.uid == uid
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.name is string
+        && request.resource.data.admin == initialAdmin();
+    }
+
+    function isOwnerUpdate(uid) {
+      return signedIn()
+        && uid == request.auth.uid
+        && request.resource.data.get('uid', '') == uid
+        && request.resource.data.get('admin', false) == resource.data.get('admin', false)
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['uid', 'name', 'email', 'pendingEmail']);
+    }
+
+    function isInitialAdminSetup(uid) {
+      return initialAdmin()
+        && uid == request.auth.uid
+        && request.resource.data.uid == uid
+        && request.resource.data.admin == true
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['uid', 'name', 'email', 'pendingEmail', 'admin']);
+    }
+
+    function isAdminUpdate() {
+      return isAdmin()
+        && request.resource.data.get('uid', '') == resource.data.get('uid', '')
+        && request.resource.data.get('admin', false) is bool
+        && (
+          request.resource.data.email.lower() != 'victorrasmarcelino@gmail.com'
+          || request.resource.data.admin == true
+        )
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['name', 'admin']);
+    }
+
+    match /users/{userId} {
+      allow get, list: if isAdmin()
+        || (signedIn() && userId == request.auth.uid)
+        || (signedIn() && resource.data.get('uid', '') == request.auth.uid)
+        || (signedIn() && resource.data.get('email', '') == request.auth.token.email);
+
+      allow create: if isValidUserCreate(userId);
+      allow update: if isOwnerUpdate(userId)
+        || isInitialAdminSetup(userId)
+        || isAdminUpdate();
+      allow delete: if isAdmin()
+        || (signedIn() && userId == request.auth.uid)
+        || (signedIn() && resource.data.get('uid', '') == request.auth.uid)
+        || (signedIn() && resource.data.get('email', '') == request.auth.token.email);
+    }
+
+    match /streamings/{streamingId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /shows/{showId} {
+      allow read, write: if signedIn();
+    }
+  }
+}

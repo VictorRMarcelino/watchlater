@@ -7,6 +7,7 @@ import { onAuthStateChanged } from 'firebase/auth'
 import App from './App.vue'
 import router from './router'
 import { auth } from './database/Database'
+import UserService from './services/UserService'
 import { useAuthStore } from './stores/auth'
 
 const app = createApp(App)
@@ -21,8 +22,9 @@ await new Promise<void>((resolve) => {
 	onAuthStateChanged(auth, async (user) => {
 		try {
 			if (user) {
-				const tokenResult = await user.getIdTokenResult()
-				authStore.setAuthentication(user, tokenResult.token, tokenResult.claims.admin === true)
+				const profile = await UserService.getUserProfile(user)
+				const token = await user.getIdToken()
+				authStore.setAuthentication(user, token, profile.admin)
 			} else {
 				authStore.clearAuthentication()
 			}
