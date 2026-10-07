@@ -12,9 +12,21 @@ Aplicação web para organizar o que você quer assistir. Cadastre títulos, ano
 
 ## Tecnologias
 
-Vue 3 · TypeScript · Vite · Vue Router · Pinia · Tailwind CSS 4 · Firebase Authentication · Cloud Firestore · SweetAlert2
+[![Vue 3](https://img.shields.io/badge/Vue%203-4FC08D?style=for-the-badge&logo=vuedotjs&logoColor=white)](https://vuejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
+[![Vue Router](https://img.shields.io/badge/Vue%20Router-4FC08D?style=for-the-badge&logo=vuedotjs&logoColor=white)](https://router.vuejs.org/)
+[![Pinia](https://img.shields.io/badge/Pinia-FFD859?style=for-the-badge&logo=pinia&logoColor=black)](https://pinia.vuejs.org/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-38B2AC?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+[![Firebase](https://img.shields.io/badge/Firebase-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)](https://firebase.google.com/)
+[![Cloud Firestore](https://img.shields.io/badge/Cloud%20Firestore-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)](https://firebase.google.com/docs/firestore)
+[![SweetAlert2](https://img.shields.io/badge/SweetAlert2-7B3F00?style=for-the-badge&logo=javascript&logoColor=white)](https://sweetalert2.github.io/)
 
-Testes: Vitest, Vue Test Utils e Playwright.
+### Testes
+
+[![Vitest](https://img.shields.io/badge/Vitest-6E9F18?style=for-the-badge&logo=vitest&logoColor=white)](https://vitest.dev/)
+[![Vue Test Utils](https://img.shields.io/badge/Vue%20Test%20Utils-4FC08D?style=for-the-badge&logo=vuedotjs&logoColor=white)](https://test-utils.vuejs.org/)
+[![Playwright](https://img.shields.io/badge/Playwright-45BA4B?style=for-the-badge&logo=playwright&logoColor=white)](https://playwright.dev/)
 
 ## Rotas
 
@@ -26,7 +38,7 @@ Testes: Vitest, Vue Test Utils e Playwright.
 | `/login` | Entrar | Público |
 | `/register` | Criar conta | Público |
 
-As rotas protegidas redirecionam visitantes para o login. A permissão administrativa usa a custom claim `admin` do Firebase Authentication, que deve ser concedida em um ambiente confiável, fora do cliente.
+As rotas protegidas redirecionam visitantes para o login. A permissão administrativa é lida do campo `admin` em `users/{uid}`; as regras do Firestore impedem que o próprio usuário altere esse campo. A conta `victorrasmarcelino@gmail.com` é a conta inicial de administrador.
 
 ## Configuração
 
@@ -48,9 +60,17 @@ Requisitos: Node.js `^22.18.0` ou `>=24.12.0` e npm.
    VITE_FIREBASE_STORAGE_BUCKET=
    VITE_FIREBASE_MESSAGING_SENDER_ID=
    VITE_FIREBASE_APP_ID=
+   VITE_FIREBASE_INITIAL_ADMIN_EMAIL=
    ```
 
-3. Ative o provedor de e-mail e senha no Firebase Authentication e configure o Cloud Firestore e suas regras de acesso. Guards de rota no cliente não substituem as regras de segurança do banco.
+3. Ative o provedor de e-mail e senha no Firebase Authentication e configure o Cloud Firestore.
+4. Publique as regras de segurança antes de disponibilizar a aplicação:
+
+   ```sh
+   npx firebase-tools deploy --only firestore:rules
+   ```
+
+   Os perfis novos são gravados em `users/{uid}`. Perfis legados são migrados para esse formato no primeiro login; usuários que dependiam apenas da antiga custom claim não mantêm automaticamente a permissão e devem entrar uma vez para serem promovidos pela conta administradora inicial. Guards de rota no cliente não substituem as regras de segurança do banco.
 
 ## Desenvolvimento e validação
 
